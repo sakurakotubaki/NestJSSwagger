@@ -8,63 +8,85 @@ Swaggerをインストールする
 npm install --save @nestjs/swagger
 ```
 
-## POSTとGETをするAPIを構築する
-taskというダミーのデータを入れる機能を作成する
+## NestJSの使い方
 
-1. moduleを作成
+1. 新しい`module`の作成を行う。
+
+postsというディレクトリを作成してその中に、雛形のファイルを自動生成する。
 ```bash
-nest g module tasks
-```
-2. serviceを作成
-```bash
-nest g service tasks
-```
-3. controllerを作成
-```bash
-nest g controller tasks
+nest generate module posts
 ```
 
-## ダミーの配列にPOSTとGETをするのに必要なプログラムを作成する
-```typescript
-import { Injectable } from '@nestjs/common';
-import { Tasks } from './entities/tasks.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+2. `Controller`を作成する。
+```bash
+nest generate controller posts
+```
 
-@Injectable()
-export class TasksService {
-  constructor(
-    @InjectRepository(Tasks)
-    private tasksRepository: Repository<Tasks>,
-  ) {}
+3. `service`という別のモジュールを作成して、Textはそこに配置する。APIのデータと思われる。
+```bash
+nest generate service posts
+```
 
-  findAll(): Promise<Tasks[]> {
-    return this.tasksRepository.find();
+**posts.module.ts**
+こちらは、コマンドを打つと自動生成される
+
+```ts
+import { Module } from '@nestjs/common';
+import { PostsController } from './posts.controller';
+import { PostsService } from './posts.service';
+
+@Module({
+  controllers: [PostsController],
+  providers: [PostsService],
+})
+export class PostsModule {}
+```
+
+**posts.controller.ts**
+APIを操作するコントローラーを作成する
+
+```ts
+import { Body, Controller, Get, Post } from '@nestjs/common';
+import { PostsService } from './posts.service';
+import { PostType } from './posts.interface';
+import { ApiBody } from '@nestjs/swagger';
+
+@Controller('posts')
+export class PostsController {
+  constructor(private readonly postsService: PostsService) {}
+
+  @Get()
+  findAll() {
+    return this.postsService.findAll();
   }
 
-  create(task: Tasks): Promise<Tasks> {
-    return this.tasksRepository.save(task);
+  @Post()
+  @ApiBody({ type: PostType })
+  create(@Body() post: PostType): void {
+    this.postsService.create(post);
   }
 }
 ```
 
+**posts.service.ts**
+ダミーの配列と、データを入れるメソッドを作成する
 
-```typescript
-import { Controller, Get, Post, Body } from '@nestjs/common';
-import { TasksService } from './tasks.service';
+```ts
+import { Injectable } from '@nestjs/common';
+import { PostType } from './posts.interface';
 
-@Controller('tasks')
-export class TasksController {
-  constructor(private tasksService: TasksService) {}
+// 全てのブログメッセージを返す
+@Injectable()
+export class PostsService {
+  // このクラス内でのみアクセス可能なプロパティ
+  private readonly posts: PostType[] = [];
 
-  @Get()
-  getAllTasks() {
-    return this.tasksService.getAllTasks();
+  findAll() {
+    return this.posts;
   }
 
-  @Post()
-  createTask(@Body() body) {
-    return this.tasksService.createTask(body);
+  create(post: PostType) {
+    this.posts.push(post);
   }
 }
 ```
